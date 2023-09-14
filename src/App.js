@@ -1,4 +1,4 @@
-import React, {useMemo, useRef, useState} from "react";
+import React, {useEffect, useMemo, useRef, useState} from "react";
 import Counter from "./components/Counter";
 import ClassCounter from "./components/ClassCounter";
 
@@ -11,6 +11,14 @@ import PostForm from "./components/UI/PostForm/PostForm";
 import MySelect from "./components/UI/select/MySelect";
 import PostFilter from "./components/PostFilter";
 import MyModal from "./components/UI/MyModal/MyModal";
+import {usePosts} from "./hooks/usePosts";
+import axios from "axios";
+import PostService from "./API/PostService";
+import Loader from "./components/UI/Loader/Loader";
+import {useFetching} from "./hooks/useFetching";
+import {getPagesArray, getPagesCount} from "./utils/pages";
+import {usePagination} from "./hooks/usePagination";
+import Pagination from "./components/UI/pagination/Pagination";
 
 function App() {
     // const state = useState(5)
@@ -19,17 +27,48 @@ function App() {
     // console.log(count)
     // console.log(setCount)
 
+    const [posts, setPosts] = useState([])
+
     const [value, setValue] = useState('Text in input')
     // const [selectedSort, setSelectedSort] = useState('')
     // const [searchQuery, setSearchQuery] = useState('')
     const [filter, setFilter] = useState({sort: '', query: ''})
     const [modal, setModal] = useState(false)
+    const [totalPages, setTotalPages] = useState(0)
+    const [limit, setLimit] = useState(10)
+    const [page, setPage] = useState(1)
 
-    const [posts, setPosts] = useState([
-        {id: 1, title: "JS", body: "2 JavaSript"},
-        {id: 2, title: "Python", body: "1 Python"},
-        {id: 3, title: "Django", body: "3 Django"},
-    ])
+    // const [fetchPosts, isPostsLoading, postError] = useFetching(async  () => {
+    const [fetchPosts, isPostsLoading, postError] = useFetching(async  (limit, page) => {
+        const response = await PostService.getAll(limit, page);
+        setPosts(response.data)
+        const totalCount = response.headers['x-total-count']
+        setTotalPages(getPagesCount(totalCount, limit))
+    })
+
+    const sortedAndSearchedPosts = usePosts(posts, filter.sort, filter.query)
+
+    // async function fetchPosts() {
+    //     setIsPostLoading(true);
+    //     setTimeout(async () => {
+    //
+    //         setIsPostLoading(false);
+    //     }, 5000)
+    // }
+
+    useEffect(() => {
+    //     fetchPosts()
+    // }, [page])
+        fetchPosts(limit, page)
+    }, [])
+
+    // const pagesArray = usePagination(totalPages)
+
+    const changePage = (page) => {
+        setPage(page)
+        // way 2
+        fetchPosts(limit, page)
+    }
 
     // function getSortedPosts () {
     //     console.log('SORTED')
@@ -39,17 +78,17 @@ function App() {
     //     return posts;
     // }
 
-    const sortedPosts = useMemo(()=>{
-        console.log('SORTED')
-        if(filter.sort) {
-            return [...posts].sort((a, b) => a[filter.sort].localeCompare(b[filter.sort]))
-        }
-        return posts;
-    }, [filter.sort, posts])
+    // const sortedPosts = useMemo(()=>{
+    //     console.log('SORTED')
+    //     if(filter.sort) {
+    //         return [...posts].sort((a, b) => a[filter.sort].localeCompare(b[filter.sort]))
+    //     }
+    //     return posts;
+    // }, [filter.sort, posts])
 
-    const sortedAndSearchedPosts = useMemo(() => {
-        return sortedPosts.filter(post => post.title.toLowerCase().includes(filter.query))
-    }, [filter.query, sortedPosts])
+    // const sortedAndSearchedPosts = useMemo(() => {
+    //     return sortedPosts.filter(post => post.title.toLowerCase().includes(filter.query))
+    // }, [filter.query, sortedPosts])
 
     // const [posts2, setPosts2] = useState([
     //     {id: 1, title: "Python", body: "Description"},
@@ -57,7 +96,7 @@ function App() {
     //     {id: 3, title: "Python3", body: "Description3"},
     // ])
 
-    function changeValue(event){
+    function changeValue(event) {
         return setValue(event.target.value)
     }
 
@@ -96,13 +135,14 @@ function App() {
 
     // const sortPosts = (sort) => {
     //     setSelectedSort(sort)
-        // setPosts([...posts].sort((a, b) => a[sort].localeCompare(b[sort])))
+    // setPosts([...posts].sort((a, b) => a[sort].localeCompare(b[sort])))
     // }
 
     return (
         <div className="App">
+            <button onClick={fetchPosts}>GET POSTS</button>
             <MyButton style={{marginTop: 30}} onClick={() => setModal(true)}>
-                Create User
+                Create Post
             </MyButton>
             <MyModal visible={modal} setVisible={setModal}>
                 <PostForm create={createPost}/>
@@ -113,8 +153,21 @@ function App() {
                 setFilter={setFilter}
             />
             {/*<PostList remove={removePost} posts={posts} title={'Posts List JS'}/>*/}
-            <PostList remove={removePost} posts={sortedAndSearchedPosts} title={'Posts List JS'}/>
+            { postError && <h1>Error ${postError}</h1>
+            }
 
+            {isPostsLoading
+                ? <div style={{display: 'flex', justifyContent: 'center', marginTop: 50}}>
+                    <Loader/>
+                  </div>
+                : <PostList remove={removePost} posts={sortedAndSearchedPosts} title={'Posts List'}/>
+            }
+
+            <Pagination
+                totalPages={totalPages}
+                changePage={changePage}
+                page={page}
+            />
 
             {/*<PostList posts={posts2} title={'Posts List Python'}/>*/}
 
@@ -127,6 +180,16 @@ function App() {
             {/*    value={value}*/}
             {/*    onChange={changeValue}*/}
             {/*/>*/}
+            {/*<div className="page__wrapper">*/}
+            {/*    {pagesArray.map(p =>*/}
+            {/*        <span className={*/}
+            {/*            page === p ? 'page page__current' : 'page'*/}
+            {/*        }*/}
+            {/*              key={p}*/}
+            {/*              onClick={() => changePage(p)}*/}
+            {/*        >{p}</span>*/}
+            {/*    )}*/}
+            {/*</div>*/}
         </div>
     );
 }
