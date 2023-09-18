@@ -6,7 +6,8 @@ html, body{
 
 #root {
     display: flex;
-    justify-content: center;
+    flex-direction: column;
+   align-items: center;
 }
 
 .App {
@@ -20,6 +21,10 @@ html, body{
     margin-top: 15px;
     justify-content: space-between;
     align-items: center;
+}
+
+.post__btns {
+    display: flex;
 }
 
 .post-enter {
@@ -51,4 +56,17 @@ html, body{
 .page__current {
     border: 2px solid orange;
     font-weight: bold;
+}
+
+.navbar{
+    background-color: lightgrey;
+    height: 50px;
+    width: 100vw;
+    display: flex;
+    align-items: center;
+    padding: 0 15px;
+}
+
+.navbar__links{
+    margin-left: auto;
 }
