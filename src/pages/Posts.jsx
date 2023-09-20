@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from "react";
+import React, {useEffect, useRef, useState} from "react";
 import {useFetching} from "../hooks/useFetching";
 import PostService from "../API/PostService";
 import {getPagesCount} from "../utils/pages";
@@ -23,16 +23,34 @@ const Posts = () => {
 
     const [fetchPosts, isPostsLoading, postError] = useFetching(async (limit, page) => {
         const response = await PostService.getAll(limit, page);
-        setPosts(response.data)
+        setPosts([...posts, ...response.data])
         const totalCount = response.headers['x-total-count']
         setTotalPages(getPagesCount(totalCount, limit))
     })
 
     const sortedAndSearchedPosts = usePosts(posts, filter.sort, filter.query)
 
+    const lastElement = useRef();
+    const observer = useRef();
+    console.log(lastElement)
+
     useEffect(() => {
         fetchPosts(limit, page)
     }, [])
+
+    useEffect(() => {
+        if(isPostsLoading) return;
+        if(observer.current) observer.current.disconnect();
+        let callback = function (entries, observer){
+            if (entries[0].isIntersecting && page < totalPages){
+                console.log(page)
+                setPage(page + 1)
+            }
+        }
+
+        observer.current = new IntersectionObserver(callback);
+        observer.current.observe(lastElement.current)
+    }, [isPostsLoading])
 
     const changePage = (page) => {
         setPage(page)
@@ -70,11 +88,10 @@ const Posts = () => {
             {postError && <h1>Error ${postError}</h1>
             }
 
-            {isPostsLoading
-                ? <div style={{display: 'flex', justifyContent: 'center', marginTop: 50}}>
-                    <Loader/>
-                </div>
-                : <PostList remove={removePost} posts={sortedAndSearchedPosts} title={'Posts List'}/>
+            <PostList remove={removePost} posts={sortedAndSearchedPosts} title={'Posts List'}/>
+            <div ref={lastElement} style={{height: 20, background: "red"}} />
+            { isPostsLoading &&
+                <div style={{display: 'flex', justifyContent: 'center', marginTop: 50}}><Loader /></div>
             }
 
             <Pagination
